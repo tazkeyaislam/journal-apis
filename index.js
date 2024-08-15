@@ -14,4 +14,8 @@ app.use('/appuser', appuserRoute);
 app.use('/category', categoryRoute);
 app.use('/article', articleRoute);
 
+app.get('/', (req, res) => {
+    res.send('Welcome to the API!');
+});
+
 module.exports = app;
