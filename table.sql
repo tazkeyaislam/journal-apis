@@ -9,7 +9,7 @@ create table appuser(
     role VARCHAR(20),
 );
 
-insert into appuser (name, email, password, status, isDeletable) values ('Admin','admin@gmail.com', 'admin', 'true', 'false','admin');
+insert into appuser (name, email, password, status, isDeletable, role) values ('Admin','admin@gmail.com', 'admin', 'true', 'false','admin');
 
 create table category(
     id int primary key AUTO_INCREMENT,
