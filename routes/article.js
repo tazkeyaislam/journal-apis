@@ -24,6 +24,22 @@ router.get('/admin/publishedArticles', auth.authenticateToken, checkRole.checkRo
 });
 
 // Admin can delete any article
+// router.delete('/admin/deleteArticle/:id', auth.authenticateToken, checkRole.checkRole, (req, res) => {
+//     const id = req.params.id;
+//     const query = "DELETE FROM article WHERE id = ?";
+
+//     connection.query(query, [id], (err, results) => {
+//         if (!err) {
+//             if (results.affectedRows === 0) {
+//                 return res.status(404).json({ message: "Article ID not found" });
+//             }
+//             return res.status(200).json({ message: "Article deleted successfully" });
+//         } else {
+//             return res.status(500).json(err);
+//         }
+//     });
+// });
+
 router.delete('/admin/deleteArticle/:id', auth.authenticateToken, checkRole.checkRole, (req, res) => {
     const id = req.params.id;
     const query = "DELETE FROM article WHERE id = ?";
@@ -35,7 +51,8 @@ router.delete('/admin/deleteArticle/:id', auth.authenticateToken, checkRole.chec
             }
             return res.status(200).json({ message: "Article deleted successfully" });
         } else {
-            return res.status(500).json(err);
+            console.error('Error deleting article:', err);
+            return res.status(500).json({ message: "An error occurred while trying to delete the article", error: err });
         }
     });
 });
