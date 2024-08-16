@@ -1,5 +1,5 @@
 const express = require('express');
-const connection = require('../connection');
+const pool = require('../connection');
 const router = express.Router();
 var auth = require('../services/authentication');
 let checkRole = require('../services/checkRole')
@@ -14,7 +14,7 @@ router.get('/admin/publishedArticles', auth.authenticateToken, checkRole.checkRo
         WHERE a.status = 'published'
     `;
 
-    connection.query(query, (err, results) => {
+    pool.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
         } else {
@@ -44,7 +44,7 @@ router.delete('/admin/deleteArticle/:id', auth.authenticateToken, checkRole.chec
     const id = req.params.id;
     const query = "DELETE FROM article WHERE id = ?";
 
-    connection.query(query, [id], (err, results) => {
+    pool.query(query, [id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 return res.status(404).json({ message: "Article ID not found" });
@@ -69,7 +69,7 @@ router.get('/myArticles', auth.authenticateToken, (req, res) => {
         WHERE a.user_id = ?
     `;
 
-    connection.query(query, [userId], (err, results) => {
+    pool.query(query, [userId], (err, results) => {
         if (!err) {
             return res.status(200).json(results);
         } else {
@@ -92,7 +92,7 @@ router.post('/addNewArticle', auth.authenticateToken, (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?)
     `;
 
-    connection.query(
+    pool.query(
         query,
         [article.title, article.content, new Date(), article.categoryId, article.status, userId],
         (err, results) => {
@@ -117,7 +117,7 @@ router.post('/updateArticle', auth.authenticateToken, (req, res) => {
         WHERE id = ? AND user_id = ?
     `;
 
-    connection.query(
+    pool.query(
         query,
         [article.title, article.content, article.categoryId, new Date(), article.status, article.id, userId],
         (err, results) => {
@@ -140,7 +140,7 @@ router.delete('/deleteArticle/:id', auth.authenticateToken, (req, res) => {
 
     const query = "DELETE FROM article WHERE id = ? AND user_id = ?";
 
-    connection.query(query, [id, userId], (err, results) => {
+    pool.query(query, [id, userId], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 return res.status(404).json({ message: "Article ID not found or you don't have permission" });
@@ -164,7 +164,7 @@ router.get('/publicPublishedArticles', (req, res) => {
         WHERE a.status = 'published'
     `;
 
-    connection.query(query, (err, results) => {
+    pool.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
         } else {
@@ -184,7 +184,7 @@ router.post('/commentArticle/:articleId', auth.authenticateToken, (req, res) => 
 
     // Insert comment
     const insertCommentQuery = 'INSERT INTO comment (article_id, user_id, comment_text) VALUES (?, ?, ?)';
-    connection.query(insertCommentQuery, [articleId, userId, commentText], (err, result) => {
+    pool.query(insertCommentQuery, [articleId, userId, commentText], (err, result) => {
         if (err) {
             return res.status(500).json(err);
         }
@@ -204,7 +204,7 @@ router.get('/getComments/:articleId', (req, res) => {
         ORDER BY c.comment_date DESC
     `;
 
-    connection.query(getCommentsQuery, [articleId], (err, results) => {
+    pool.query(getCommentsQuery, [articleId], (err, results) => {
         if (err) {
             return res.status(500).json(err);
         }
@@ -219,7 +219,7 @@ router.post('/likeArticle/:articleId', auth.authenticateToken, (req, res) => {
 
     const query = 'INSERT INTO article_like (article_id, user_id) VALUES (?, ?)';
 
-    connection.query(query, [articleId, userId], (err, results) => {
+    pool.query(query, [articleId, userId], (err, results) => {
         if (!err) {
             return res.status(200).json({ message: "Article liked successfully" });
         } else {
@@ -238,7 +238,7 @@ router.delete('/unlikeArticle/:articleId', auth.authenticateToken, (req, res) =>
 
     const query = 'DELETE FROM article_like WHERE article_id = ? AND user_id = ?';
 
-    connection.query(query, [articleId, userId], (err, results) => {
+    pool.query(query, [articleId, userId], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 return res.status(404).json({ message: "You haven't liked this article yet" });
@@ -256,7 +256,7 @@ router.get('/likeCount/:articleId', (req, res) => {
 
     const query = 'SELECT COUNT(*) AS likeCount FROM article_like WHERE article_id = ?';
 
-    connection.query(query, [articleId], (err, results) => {
+    pool.query(query, [articleId], (err, results) => {
         if (!err) {
             return res.status(200).json({ likeCount: results[0].likeCount });
         } else {
@@ -278,7 +278,7 @@ router.get('/myLikedArticles', auth.authenticateToken, (req, res) => {
         WHERE al.user_id = ?
     `;
 
-    connection.query(query, [userId], (err, results) => {
+    pool.query(query, [userId], (err, results) => {
         if (!err) {
             return res.status(200).json(results);
         } else {
@@ -293,7 +293,7 @@ router.get('/checkIfLiked/:articleId', auth.authenticateToken, (req, res) => {
 
     const query = 'SELECT COUNT(*) AS liked FROM article_like WHERE article_id = ? AND user_id = ?';
 
-    connection.query(query, [articleId, userId], (err, results) => {
+    pool.query(query, [articleId, userId], (err, results) => {
         if (!err) {
             return res.status(200).json(results[0].liked > 0);
         } else {

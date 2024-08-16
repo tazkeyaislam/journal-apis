@@ -1,5 +1,5 @@
 const express = require('express');
-const connection = require('../connection');
+const pool = require('../connection');
 const router = express.Router();
 
 const jwt = require('jsonwebtoken');
@@ -12,11 +12,11 @@ let checkRole = require('../services/checkRole')
 router.post('/signup', (req, res) => {
     let user = req.body;
     query = "select email,password,status,role from appuser where email=?";
-    connection.query(query, [user.email], (err, results) => {
+    pool.query(query, [user.email], (err, results) => {
         if (!err) {
             if (results.length <= 0) {
                 query = "insert into appuser(name,email,password,status,isDeletable,role) values(?,?,?,'false','true','user')";
-                connection.query(query, [user.name, user.email, user.password], (err, results) => {
+                pool.query(query, [user.name, user.email, user.password], (err, results) => {
                     if (!err) {
                         return res.status(200).json({ message: "Successfully Registered" });
                     } else {
@@ -60,7 +60,7 @@ router.post('/login', (req, res) => {
     const user = req.body;
     const query = "SELECT id, email, password, status, role, isDeletable FROM appuser WHERE email=?";
 
-    connection.query(query, [user.email], (err, results) => {
+    pool.query(query, [user.email], (err, results) => {
         if (!err) {
             if (results.length <= 0 || results[0].password !== user.password) {
                 return res.status(401).json({ message: "Incorrect email or password" });
@@ -88,7 +88,7 @@ router.post('/login', (req, res) => {
 router.get('/getAllAppUser', auth.authenticateToken, checkRole.checkRole, (req, res) => {
     // const tokenPayload = res.locals;
     var query = "select id,name,email,status from appuser where role='user'";
-    connection.query(query, (err, results) => {
+    pool.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
         } else {
@@ -100,7 +100,7 @@ router.get('/getAllAppUser', auth.authenticateToken, checkRole.checkRole, (req, 
 router.patch('/updateUserStatus', auth.authenticateToken, checkRole.checkRole, (req, res) => {
     let user = req.body;
     var query = "update appuser set status=? where id=?";
-    connection.query(query, [user.status, user.id], (err, results) => {
+    pool.query(query, [user.status, user.id], (err, results) => {
         if (!err) {
             if (results.affectedRows == 0) {
                 return res.status(404).json({ message: "User ID does not exist" });
@@ -117,14 +117,14 @@ router.post('/changePassword', auth.authenticateToken, (req, res) => {
     let user = req.body;
     let email = res.locals.email;
     var query = "select * from appuser where email=? and password=?";
-    connection.query(query, [email, user.oldPassword], (err, results) => {
+    pool.query(query, [email, user.oldPassword], (err, results) => {
         if (!err) {
             if (results.length <= 0) {
                 return res.status(404).json({ message: "Incorrect old password" });
             }
             else if (results[0].password == user.oldPassword) {
                 query = "update appuser set password=? where email=?";
-                connection.query(query, [user.newPassword, email], (err, results) => {
+                pool.query(query, [user.newPassword, email], (err, results) => {
                     if (!err) {
                         return res.status(200).json({ message: "Password updated successfully" });
                     }
