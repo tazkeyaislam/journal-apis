@@ -1,6 +1,6 @@
 const express = require('express');
 var cors = require('cors');
-const connection = require('./connection');
+const pool = require('./connection');
 const appuserRoute = require('./routes/appuser');
 const categoryRoute = require('./routes/category');
 const articleRoute = require('./routes/article');
