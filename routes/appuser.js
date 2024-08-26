@@ -3,7 +3,6 @@ const pool = require('../connection');
 const router = express.Router();
 
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 let auth = require('../services/authentication');
@@ -31,30 +30,6 @@ router.post('/signup', (req, res) => {
         }
     })
 })
-
-// router.post('/login', (req, res) => {
-//     const user = req.body;
-//     query = "select email, password,status,role from appuser where email=?";
-//     connection.query(query, [user.email], (err, results) => {
-//         if (!err) {
-//             if (results.length <= 0 || results[0].password != user.password) {
-//                 return res.status(401).json({ message: "Incorrect email or password" });
-//             }
-//             else if (results[0].status === 'false') {
-//                 return res.status(401).json({ message: "Wait for Admin approuval" });
-//             }
-//             else if (results[0].password == user.password) {
-//                 const response = { email: results[0].email, isDeletable: results[0].isDeletable, role: results[0].role, id: results[0].id }
-//                 const accessToken = jwt.sign(response, process.env.ACCESS_TOKEN, { expiresIn: '8h' })
-//                 res.status(200).json({ token: accessToken });
-//             } else {
-//                 return res.status(400).json({ message: "Something went wrong. Please try again later" })
-//             }
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     })
-// })
 
 router.post('/login', (req, res) => {
     const user = req.body;
