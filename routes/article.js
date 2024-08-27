@@ -1,307 +1,327 @@
 const express = require('express');
-const pool = require('../connection');
+// const pool = require('../connection');
+const { Op } = require('sequelize');
 const router = express.Router();
 var auth = require('../services/authentication');
-let checkRole = require('../services/checkRole')
+let checkRole = require('../services/checkRole');
 
-// Admin can get all published articles with the user's email
-router.get('/admin/publishedArticles', auth.authenticateToken, checkRole.checkRole, (req, res) => {
-    const query = `
-        SELECT a.id, a.title, a.content, a.status, a.publication_date, c.name AS categoryName, u.email AS userEmail
-        FROM article AS a
-        INNER JOIN category AS c ON a.categoryId = c.id
-        INNER JOIN appuser AS u ON a.user_id = u.id
-        WHERE a.status = 'published'
-    `;
+// Import Sequelize models
+const Article = require('../models/Article');
+const Category = require('../models/Category');
+const AppUser = require('../models/AppUser');
+const Comment = require('../models/Comment');
+const ArticleLike = require('../models/ArticleLike');
+const sequelize = require('../config/database');
 
-    pool.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-});
-
-// Admin can delete any article
-// router.delete('/admin/deleteArticle/:id', auth.authenticateToken, checkRole.checkRole, (req, res) => {
-//     const id = req.params.id;
-//     const query = "DELETE FROM article WHERE id = ?";
-
-//     connection.query(query, [id], (err, results) => {
-//         if (!err) {
-//             if (results.affectedRows === 0) {
-//                 return res.status(404).json({ message: "Article ID not found" });
-//             }
-//             return res.status(200).json({ message: "Article deleted successfully" });
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// });
-
-router.delete('/admin/deleteArticle/:id', auth.authenticateToken, checkRole.checkRole, (req, res) => {
-    const id = req.params.id;
-    const query = "DELETE FROM article WHERE id = ?";
-
-    pool.query(query, [id], (err, results) => {
-        if (!err) {
-            if (results.affectedRows === 0) {
-                return res.status(404).json({ message: "Article ID not found" });
-            }
-            return res.status(200).json({ message: "Article deleted successfully" });
-        } else {
-            console.error('Error deleting article:', err);
-            return res.status(500).json({ message: "An error occurred while trying to delete the article", error: err });
-        }
-    });
-});
-
-
-// Authenticated users can get their articles
-router.get('/myArticles', auth.authenticateToken, (req, res) => {
-    const userId = res.locals.id;
-
-    const query = `
-        SELECT a.id, a.title, a.content, a.status, a.publication_date, c.name AS categoryName
-        FROM article AS a
-        INNER JOIN category AS c ON a.categoryId = c.id
-        WHERE a.user_id = ?
-    `;
-
-    pool.query(query, [userId], (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-});
-
-// Authenticated users can add new articles
-router.post('/addNewArticle', auth.authenticateToken, (req, res) => {
-    const article = req.body;
-    const userId = res.locals.id; // Extract user ID from res.locals
-
-    if (!userId) {
-        return res.status(401).json({ message: "Unauthorized: User ID is required" });
-    }
-
-    const query = `
-        INSERT INTO article (title, content, publication_date, categoryId, status, user_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `;
-
-    pool.query(
-        query,
-        [article.title, article.content, new Date(), article.categoryId, article.status, userId],
-        (err, results) => {
-            if (!err) {
-                return res.status(200).json({ message: "Article added successfully" });
-            } else {
-                return res.status(500).json(err);
-            }
-        }
-    );
-});
-
-
-// Authenticated users can update their articles
-router.post('/updateArticle', auth.authenticateToken, (req, res) => {
-    const article = req.body;
-    const userId = res.locals.id;
-
-    const query = `
-        UPDATE article
-        SET title = ?, content = ?, categoryId = ?, publication_date = ?, status = ?
-        WHERE id = ? AND user_id = ?
-    `;
-
-    pool.query(
-        query,
-        [article.title, article.content, article.categoryId, new Date(), article.status, article.id, userId],
-        (err, results) => {
-            if (!err) {
-                if (results.affectedRows === 0) {
-                    return res.status(404).json({ message: "Article ID not found or you don't have permission" });
+router.get('/admin/publishedArticles', auth.authenticateToken, checkRole.checkRole, async (req, res) => {
+    try {
+        const articles = await Article.findAll({
+            where: { status: 'published' },
+            include: [
+                {
+                    model: Category,
+                    attributes: ['name'],
+                    as: 'category'
+                },
+                {
+                    model: AppUser,
+                    attributes: ['email'],
+                    as: 'user'
                 }
-                return res.status(200).json({ message: "Article updated successfully" });
-            } else {
-                return res.status(500).json(err);
-            }
-        }
-    );
-});
+            ],
+            attributes: ['id', 'title', 'content', 'status', 'publication_date']
+        });
 
-// Authenticated users can delete their articles
-router.delete('/deleteArticle/:id', auth.authenticateToken, (req, res) => {
-    const id = req.params.id;
-    const userId = res.locals.id;
-
-    const query = "DELETE FROM article WHERE id = ? AND user_id = ?";
-
-    pool.query(query, [id, userId], (err, results) => {
-        if (!err) {
-            if (results.affectedRows === 0) {
-                return res.status(404).json({ message: "Article ID not found or you don't have permission" });
-            }
-            return res.status(200).json({ message: "Article deleted successfully" });
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-});
-
-
-router.get('/publicPublishedArticles', (req, res) => {
-    const query = `
-        SELECT a.id, a.title, a.content, a.status, a.publication_date,c.id AS categoryId, c.name AS categoryName, u.email AS userEmail,
-        (SELECT COUNT(*) FROM article_like WHERE article_id = a.id) AS likeCount,
-        (SELECT COUNT(*) FROM comment WHERE article_id = a.id) AS commentCount
-        FROM article AS a
-        INNER JOIN category AS c ON a.categoryId = c.id
-        INNER JOIN appuser AS u ON a.user_id = u.id
-        WHERE a.status = 'published'
-    `;
-
-    pool.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-});
-
-router.post('/commentArticle/:articleId', auth.authenticateToken, (req, res) => {
-    const articleId = req.params.articleId;
-    const userId = res.locals.id;
-    const { commentText } = req.body;
-
-    if (!commentText) {
-        return res.status(400).json({ message: "Comment text is required" });
+        return res.status(200).json(articles);
+    } catch (err) {
+        return res.status(500).json(err);
     }
+});
 
-    // Insert comment
-    const insertCommentQuery = 'INSERT INTO comment (article_id, user_id, comment_text) VALUES (?, ?, ?)';
-    pool.query(insertCommentQuery, [articleId, userId, commentText], (err, result) => {
-        if (err) {
-            return res.status(500).json(err);
+router.delete('/admin/deleteArticle/:id', auth.authenticateToken, checkRole.checkRole, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const result = await Article.destroy({ where: { id } });
+
+        if (result === 0) {
+            return res.status(404).json({ message: "Article ID not found" });
         }
-        return res.status(200).json({ message: "Comment added successfully" });
-    });
+
+        return res.status(200).json({ message: "Article deleted successfully" });
+    } catch (err) {
+        return res.status(500).json({ message: "An error occurred while trying to delete the article", error: err });
+    }
+});
+
+router.get('/myArticles', auth.authenticateToken, async (req, res) => {
+    try {
+        const userId = res.locals.id;
+
+        const articles = await Article.findAll({
+            where: { user_id: userId },
+            include: [
+                {
+                    model: Category,
+                    attributes: ['name'],
+                    as: 'category'
+                },
+                {
+                    model: AppUser,
+                    attributes: ['email'],
+                    as: 'user'
+                }
+            ],
+            attributes: ['id', 'title', 'content', 'status', 'publication_date']
+        });
+
+        return res.status(200).json(articles);
+    } catch (err) {
+        console.error('Error fetching articles:', err);
+        return res.status(500).json({ message: 'Internal Server Error', error: err });
+    }
+});
+
+router.post('/addNewArticle', auth.authenticateToken, async (req, res) => {
+    try {
+        const userId = res.locals.id; // Extract user ID from res.locals
+        const { title, content, categoryId, status } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized: User ID is required" });
+        }
+
+        const newArticle = await Article.create({
+            title,
+            content,
+            publication_date: new Date(),
+            category_id: categoryId,
+            status,
+            user_id: userId
+        });
+
+        return res.status(200).json({ message: "Article added successfully", article: newArticle });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
+});
+
+router.post('/updateArticle', auth.authenticateToken, async (req, res) => {
+    try {
+        const userId = res.locals.id;
+        const { id, title, content, categoryId, status } = req.body;
+
+        const [updated] = await Article.update(
+            { title, content, category_id: categoryId, publication_date: new Date(), status },
+            { where: { id, user_id: userId } }
+        );
+
+        if (updated === 0) {
+            return res.status(404).json({ message: "Article ID not found or you don't have permission" });
+        }
+
+        return res.status(200).json({ message: "Article updated successfully" });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
+});
+
+router.delete('/deleteArticle/:id', auth.authenticateToken, async (req, res) => {
+    try {
+        const userId = res.locals.id;
+        const id = req.params.id;
+
+        const result = await Article.destroy({ where: { id, user_id: userId } });
+
+        if (result === 0) {
+            return res.status(404).json({ message: "Article ID not found or you don't have permission" });
+        }
+
+        return res.status(200).json({ message: "Article deleted successfully" });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
+});
+
+router.get('/publicPublishedArticles', async (req, res) => {
+    try {
+        const articles = await Article.findAll({
+            where: { status: 'published' },
+            include: [
+                {
+                    model: Category,
+                    attributes: ['id', 'name'],
+                    as: 'category'
+                },
+                {
+                    model: AppUser,
+                    attributes: ['email'],
+                    as: 'user'
+                }
+            ],
+            attributes: [
+                'id', 'title', 'content', 'status', 'publication_date',
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*) FROM article_like WHERE article_like.article_id = article.id
+                    )`),
+                    'likeCount'
+                ],
+                [
+                    sequelize.literal(`(
+                        SELECT COUNT(*) FROM comment WHERE comment.article_id = article.id
+                    )`),
+                    'commentCount'
+                ]
+            ]
+        });
+
+        return res.status(200).json(articles);
+    } catch (err) {
+        console.error('Error fetching public published articles:', err);  // Log the error with details
+        return res.status(500).json({ message: 'Internal Server Error', error: err });
+    }
+});
+
+router.post('/commentArticle/:articleId', auth.authenticateToken, async (req, res) => {
+    try {
+        const articleId = req.params.articleId;
+        const userId = res.locals.id;
+        const { commentText } = req.body;
+
+        if (!commentText) {
+            return res.status(400).json({ message: "Comment text is required" });
+        }
+
+        const newComment = await Comment.create({
+            article_id: articleId,
+            user_id: userId,
+            comment_text: commentText
+        });
+
+        return res.status(200).json({ message: "Comment added successfully", comment: newComment });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
+});
+
+router.get('/getComments/:articleId', async (req, res) => {
+    try {
+        const articleId = req.params.articleId;
+
+        const comments = await Comment.findAll({
+            where: { article_id: articleId },
+            include: [
+                {
+                    model: AppUser,
+                    attributes: ['name', 'email'],
+                    as: 'user'
+                }
+            ],
+            attributes: ['comment_text', 'comment_date'],
+            order: [['comment_date', 'DESC']]
+        });
+
+        return res.status(200).json(comments);
+    } catch (err) {
+        return res.status(500).json(err);
+    }
 });
 
 
-router.get('/getComments/:articleId', (req, res) => {
-    const articleId = req.params.articleId;
+router.post('/likeArticle/:articleId', auth.authenticateToken, async (req, res) => {
+    try {
+        const articleId = req.params.articleId;
+        const userId = res.locals.id;
 
-    const getCommentsQuery = `
-        SELECT c.comment_text, c.comment_date, u.name AS user_name
-        FROM comment AS c
-        INNER JOIN appuser AS u ON c.user_id = u.id
-        WHERE c.article_id = ?
-        ORDER BY c.comment_date DESC
-    `;
+        const [like, created] = await ArticleLike.findOrCreate({
+            where: { article_id: articleId, user_id: userId }
+        });
 
-    pool.query(getCommentsQuery, [articleId], (err, results) => {
-        if (err) {
-            return res.status(500).json(err);
+        if (!created) {
+            return res.status(400).json({ message: "You have already liked this article" });
         }
-        return res.status(200).json(results);
-    });
+
+        return res.status(200).json({ message: "Article liked successfully" });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
 });
 
-//Like an article
-router.post('/likeArticle/:articleId', auth.authenticateToken, (req, res) => {
-    const articleId = req.params.articleId;
-    const userId = res.locals.id;
+router.delete('/unlikeArticle/:articleId', auth.authenticateToken, async (req, res) => {
+    try {
+        const articleId = req.params.articleId;
+        const userId = res.locals.id;
 
-    const query = 'INSERT INTO article_like (article_id, user_id) VALUES (?, ?)';
+        const result = await ArticleLike.destroy({
+            where: { article_id: articleId, user_id: userId }
+        });
 
-    pool.query(query, [articleId, userId], (err, results) => {
-        if (!err) {
-            return res.status(200).json({ message: "Article liked successfully" });
-        } else {
-            if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(400).json({ message: "You have already liked this article" });
-            }
-            return res.status(500).json(err);
+        if (result === 0) {
+            return res.status(404).json({ message: "You haven't liked this article yet" });
         }
-    });
+
+        return res.status(200).json({ message: "Article unliked successfully" });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
 });
 
-// Unlike an article
-router.delete('/unlikeArticle/:articleId', auth.authenticateToken, (req, res) => {
-    const articleId = req.params.articleId;
-    const userId = res.locals.id;
+router.get('/likeCount/:articleId', async (req, res) => {
+    try {
+        const articleId = req.params.articleId;
 
-    const query = 'DELETE FROM article_like WHERE article_id = ? AND user_id = ?';
+        const likeCount = await ArticleLike.count({ where: { article_id: articleId } });
 
-    pool.query(query, [articleId, userId], (err, results) => {
-        if (!err) {
-            if (results.affectedRows === 0) {
-                return res.status(404).json({ message: "You haven't liked this article yet" });
-            }
-            return res.status(200).json({ message: "Article unliked successfully" });
-        } else {
-            return res.status(500).json(err);
-        }
-    });
+        return res.status(200).json({ likeCount });
+    } catch (err) {
+        return res.status(500).json(err);
+    }
 });
 
-// Get like count for an article
-router.get('/likeCount/:articleId', (req, res) => {
-    const articleId = req.params.articleId;
+router.get('/myLikedArticles', auth.authenticateToken, async (req, res) => {
+    try {
+        const userId = res.locals.id;
 
-    const query = 'SELECT COUNT(*) AS likeCount FROM article_like WHERE article_id = ?';
+        const likedArticles = await Article.findAll({
+            include: [
+                {
+                    model: ArticleLike,
+                    where: { user_id: userId },
+                    attributes: []
+                },
+                {
+                    model: Category,
+                    attributes: ['name'],
+                    as: 'category'
+                },
+                {
+                    model: AppUser,
+                    attributes: ['email'],
+                    as: 'user'
+                }
+            ],
+            attributes: ['id', 'title', 'content', 'status', 'publication_date']
+        });
 
-    pool.query(query, [articleId], (err, results) => {
-        if (!err) {
-            return res.status(200).json({ likeCount: results[0].likeCount });
-        } else {
-            return res.status(500).json(err);
-        }
-    });
+        return res.status(200).json(likedArticles);
+    } catch (err) {
+        return res.status(500).json(err);
+    }
 });
 
-// Get articles liked by the authenticated user
-router.get('/myLikedArticles', auth.authenticateToken, (req, res) => {
-    const userId = res.locals.id;
 
-    const query = `
-        SELECT a.id, a.title, a.content, a.status, a.publication_date, c.name AS categoryName, u.email AS userEmail
-        FROM article AS a
-        INNER JOIN article_like AS al ON a.id = al.article_id
-        INNER JOIN category AS c ON a.categoryId = c.id
-        INNER JOIN appuser AS u ON a.user_id = u.id
-        WHERE al.user_id = ?
-    `;
+router.get('/checkIfLiked/:articleId', auth.authenticateToken, async (req, res) => {
+    try {
+        const articleId = req.params.articleId;
+        const userId = res.locals.id;
 
-    pool.query(query, [userId], (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
+        const liked = await ArticleLike.count({ where: { article_id: articleId, user_id: userId } });
+
+        return res.status(200).json(liked > 0);
+    } catch (err) {
+        return res.status(500).json(err);
+    }
 });
-
-router.get('/checkIfLiked/:articleId', auth.authenticateToken, (req, res) => {
-    const articleId = req.params.articleId;
-    const userId = res.locals.id;
-
-    const query = 'SELECT COUNT(*) AS liked FROM article_like WHERE article_id = ? AND user_id = ?';
-
-    pool.query(query, [articleId, userId], (err, results) => {
-        if (!err) {
-            return res.status(200).json(results[0].liked > 0);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-});
-
 
 
 

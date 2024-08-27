@@ -1,30 +1,30 @@
-create table appuser(
-    id int primary key AUTO_INCREMENT,
-    name varchar(250),
-    email varchar(50),
-    password varchar(250),
-    status varchar(20),
-    isDeletable varchar(20),
-    UNIQUE (email),
-    role VARCHAR(20),
+CREATE TABLE app_user (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(250),
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(250),
+    status ENUM('active', 'inactive') NOT NULL,
+    role ENUM('admin', 'user') NOT NULL
 );
 
-insert into appuser (name, email, password, status, isDeletable, role) values ('Admin','admin@gmail.com', 'admin', 'true', 'false','admin');
+INSERT INTO app_user (name, email, password, status, role) 
+VALUES ('Admin', 'admin@gmail.com', 'admin', 'active', 'admin');
 
-create table category(
-    id int primary key AUTO_INCREMENT,
-    name varchar(255) NOT NULL
+CREATE TABLE category (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL
 );
 
-create table article(
-    id int primary key AUTO_INCREMENT,
-    title varchar(255) NOT NULL,
+CREATE TABLE article (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
     content LONGTEXT NOT NULL,
-    categoryId integer NOT NULL,
+    category_id INT NOT NULL,
     publication_date DATE,
-    status varchar(20),
+    status ENUM('draft', 'published') NOT NULL,
     user_id INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES appuser(id)
+    FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES app_user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE article_like (
@@ -34,9 +34,8 @@ CREATE TABLE article_like (
     like_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(article_id, user_id),
     FOREIGN KEY (article_id) REFERENCES article(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES appuser(id)
+    FOREIGN KEY (user_id) REFERENCES app_user(id) ON DELETE CASCADE
 );
-
 
 CREATE TABLE comment (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -45,15 +44,5 @@ CREATE TABLE comment (
     comment_text LONGTEXT NOT NULL,
     comment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (article_id) REFERENCES article(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES appuser(id)
+    FOREIGN KEY (user_id) REFERENCES app_user(id) ON DELETE CASCADE
 );
-
-CREATE TABLE notification(
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    notification_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES appuser(id)
-);
-
