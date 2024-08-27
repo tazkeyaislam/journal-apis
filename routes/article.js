@@ -162,13 +162,13 @@ router.get('/publicPublishedArticles', async (req, res) => {
                 'id', 'title', 'content', 'status', 'publication_date',
                 [
                     sequelize.literal(`(
-                        SELECT COUNT(*) FROM article_like WHERE article_like.article_id = article.id
+                        SELECT COUNT(*) FROM article_like WHERE article_like.article_id = Article.id
                     )`),
                     'likeCount'
                 ],
                 [
                     sequelize.literal(`(
-                        SELECT COUNT(*) FROM comment WHERE comment.article_id = article.id
+                        SELECT COUNT(*) FROM comment WHERE comment.article_id = Article.id
                     )`),
                     'commentCount'
                 ]
@@ -177,8 +177,8 @@ router.get('/publicPublishedArticles', async (req, res) => {
 
         return res.status(200).json(articles);
     } catch (err) {
-        console.error('Error fetching public published articles:', err);  // Log the error with details
-        return res.status(500).json({ message: 'Internal Server Error', error: err });
+        console.error('Error fetching public published articles:', err);
+        return res.status(500).json({ message: 'Error fetching public published articles', error: err });
     }
 });
 
