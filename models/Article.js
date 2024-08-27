@@ -46,7 +46,4 @@ const Article = sequelize.define('Article', {
     timestamps: false,
 });
 
-// Article.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
-// Article.belongsTo(AppUser, { foreignKey: 'user_id', as: 'user' });
-
 module.exports = Article;

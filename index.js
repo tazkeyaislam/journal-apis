@@ -8,7 +8,6 @@ const sequelize = require('./config/database');  // Import Sequelize setup
 
 require('./models/Associations');
 
-
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
