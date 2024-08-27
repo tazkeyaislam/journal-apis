@@ -1,11 +1,13 @@
 // database.js
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
+import mysql2 from 'mysql2';
 
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USERNAME, process.env.DB_PASSWORD, {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'mysql',
+    dialectModule: mysql2,
     pool: {
         max: 10,
         min: 0,
