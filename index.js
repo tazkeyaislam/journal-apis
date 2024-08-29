@@ -21,12 +21,12 @@ app.get('/', (req, res) => {
     res.send('Welcome to the API!');
 });
 
-sequelize.sync()
-    .then(() => {
-        console.log('Database synchronized successfully');
-    })
-    .catch(err => {
-        console.error('Error synchronizing the database:', err);
+if (process.env.NODE_ENV === 'test') {
+    sequelize.sync({ force: true }).then(() => {
+        console.log("Test database has been reset.");
+    }).catch(err => {
+        console.error("Failed to reset test database:", err);
     });
+}
 
 module.exports = app;

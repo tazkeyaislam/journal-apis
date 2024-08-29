@@ -4,14 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "NODE_ENV=test jest",
     "start": "node server.js",
     "build": "npm start"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -20,5 +19,11 @@
     "mysql2": "^3.11.0",
     "nodemailer": "^6.9.14",
     "sequelize": "^6.37.3"
+  },
+  "devDependencies": {
+    "bcrypt": "^5.1.1",
+    "jest": "^29.7.0",
+    "sequelize-mock": "^0.10.2",
+    "supertest": "^7.0.0"
   }
 }
