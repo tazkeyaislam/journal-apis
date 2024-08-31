@@ -10,10 +10,9 @@ function authenticateToken(req, res, next) {
         if (err)
             return res.sendStatus(403);
         res.locals = {
-            id: response.id, // Make sure 'id' is the correct field name in your token payload
+            id: response.id,
             email: response.email,
             role: response.role,
-            isDeletable: response.isDeletable
         };
         next()
     })
